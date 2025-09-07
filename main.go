@@ -13,15 +13,18 @@ import (
 
 func main() {
 	fmt.Printf("Hello and welcome\n")
+
+	roomServer := handler.NewRoomHandler()
+
 	router := mux.NewRouter()
-	router.HandleFunc("/rooms", handler.CreateRoom).Methods("POST")
-	router.HandleFunc("/rooms/{id}", handler.ConnectToRoom).Methods("GET")
-	// todo
-	router.HandleFunc("/rooms/{id}/show", handler.ConnectToRoom).Methods("PATCH")
-	// todo
-	router.HandleFunc("/rooms/{id}/hide", handler.ConnectToRoom).Methods("PATCH")
-	// todo
-	router.HandleFunc("/rooms/{id}/votes", handler.ConnectToRoom).Methods("POST")
+	router.HandleFunc("/rooms", roomServer.CreateRoom).Methods("POST")
+	router.HandleFunc("/rooms/{id}", roomServer.ConnectToRoom).Methods("GET")
+	//// todo
+	//router.HandleFunc("/rooms/{id}/show", handler.ConnectToRoom).Methods("PATCH")
+	//// todo
+	//router.HandleFunc("/rooms/{id}/hide", handler.ConnectToRoom).Methods("PATCH")
+	//// todo
+	//router.HandleFunc("/rooms/{id}/votes", handler.ConnectToRoom).Methods("POST")
 	err := http.ListenAndServe(":8000", router)
 	if err != nil {
 		fmt.Println(err)
