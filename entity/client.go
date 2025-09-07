@@ -24,8 +24,8 @@ const (
 	pongWait = 90 * time.Second
 )
 
-// ReceiveMessage Establish Connection from websocket and send to Room's Boardcast channel if any
-func (client *Client) ReceiveMessage() {
+// ReceiveMessageFromSocket Establish Connection from websocket and send to Room's Boardcast channel if any
+func (client *Client) ReceiveMessageFromSocket() {
 	// to close connection after exit (either due to an error or a clean close
 	defer func() {
 		client.Room.UnregisterChan <- client
@@ -35,6 +35,7 @@ func (client *Client) ReceiveMessage() {
 	client.Conn.SetReadLimit(maxMessageSize)
 	// set a keep alive check with FE client
 	client.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	// What to do when a Pong received from FE client
 	client.Conn.SetPongHandler(func(string) error {
 		// refresh deadline after receive Pong
 		client.Conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -55,3 +56,5 @@ func (client *Client) ReceiveMessage() {
 		client.Room.BroadcastChan <- message
 	}
 }
+
+// todo writeMessageToSocket()

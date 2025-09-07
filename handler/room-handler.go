@@ -81,6 +81,6 @@ func (server *RoomServer) ConnectToRoom(w http.ResponseWriter, r *http.Request) 
 	}
 
 	client.Room.RegisterChan <- client
-	go client.ReceiveMessage()
+	go client.ReceiveMessageFromSocket()
 
 }
