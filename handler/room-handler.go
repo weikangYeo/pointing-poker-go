@@ -40,6 +40,7 @@ func (server *RoomServer) CreateRoom(w http.ResponseWriter, r *http.Request) {
 
 	server.mu.Lock()
 	server.rooms[room.Id] = room
+	go room.Start()
 	server.mu.Unlock()
 
 	writeHttpResponse(w, http.StatusCreated, map[string]string{
@@ -70,8 +71,8 @@ func (server *RoomServer) ConnectToRoom(w http.ResponseWriter, r *http.Request) 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Error upgrading ws: %v", err)
+		return
 	}
-	defer conn.Close()
 
 	client := &entity.Client{
 		Name: username,
@@ -81,6 +82,9 @@ func (server *RoomServer) ConnectToRoom(w http.ResponseWriter, r *http.Request) 
 	}
 
 	client.Room.RegisterChan <- client
-	go client.ReceiveMessageFromSocket()
 
+	go client.SendMessage()
+	// dont go routine here as we need this become blocked and own this resource
+	// so when this exit, defer triggered, and connection closed.
+	client.ReceiveMessageFromSocket()
 }

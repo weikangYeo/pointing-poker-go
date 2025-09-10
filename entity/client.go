@@ -22,6 +22,7 @@ const (
 	maxMessageSize = 512
 	// Time allowed to read the next pong message from the client.
 	pongWait = 90 * time.Second
+	pingWait = 60 * time.Second
 )
 
 // ReceiveMessageFromSocket Establish Connection from websocket and send to Room's Boardcast channel if any
@@ -50,11 +51,48 @@ func (client *Client) ReceiveMessageFromSocket() {
 			break
 		}
 		message = bytes.TrimSpace(message)
-		// boardcast message here
-		// todo probably I wont need this, change to parse message logic here
-		// might... need to boardcast, but boardcast as voted.
 		client.Room.BroadcastChan <- message
 	}
 }
 
-// todo writeMessageToSocket()
+func (client *Client) SendMessage() {
+	ticker := time.NewTicker(60 * time.Second)
+	defer func() {
+		ticker.Stop()
+		client.Conn.Close()
+	}()
+	for {
+		select {
+		case message, ok := <-client.Send:
+			client.Conn.SetWriteDeadline(time.Now().Add(pingWait))
+			if !ok {
+				// hub closed channel
+				client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			writer, err := client.Conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				return
+			}
+			writer.Write(message)
+
+			// write our message that still in send channel
+			remainingMessageCount := len(client.Send)
+			for i := 0; i < remainingMessageCount; i++ {
+				writer.Write([]byte{10})
+				writer.Write(<-client.Send)
+			}
+			e := writer.Close()
+			if e != nil {
+				return
+			}
+		case <-ticker.C:
+			client.Conn.SetWriteDeadline(time.Now().Add(pingWait))
+			if err := client.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+
+	}
+}

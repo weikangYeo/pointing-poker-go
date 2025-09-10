@@ -2,6 +2,7 @@ package entity
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"log"
 )
 
@@ -26,7 +27,7 @@ func NewRoom() *Room {
 		log.Printf("Error generating random number: %v", err)
 		return nil
 	}
-	roomId := string(b)
+	roomId := hex.EncodeToString(b)
 
 	return &Room{
 		Id:             roomId,
@@ -45,6 +46,7 @@ func (room *Room) Start() {
 		// register client
 		case client := <-room.RegisterChan:
 			room.JoinedClients[client] = true
+			log.Println("Client registered")
 		// unregister client
 		case client := <-room.UnregisterChan:
 			// mean if room.JoinedClients[client] exists, and assign to "ok" variable
