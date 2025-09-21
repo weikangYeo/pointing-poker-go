@@ -45,5 +45,6 @@ This project is aim to try out websocket implementation in Golang by developing 
     - [ ] Do i need a temp storage to store vote? (if card is all hide, should not send message to clients)
 - [ ] Logic to close Room after TTL
 - [ ] Logic to control joiner in Room
+- [ ] Logic to control same user can't appear twice  
 - [ ] [Optional] Deploy to cluster to test multi client
 

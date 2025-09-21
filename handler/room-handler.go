@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -74,6 +75,12 @@ func (server *RoomServer) ConnectToRoom(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Create a new context for this client connection
+	// it's child of the request context, so it will also be cancelled when the http connection is closed
+	clientCtx, cancel := context.WithCancel(r.Context())
+	// it ensured that when ReceiveMessageFromSocket return (due to client disconnected) the context is canceled.
+	defer cancel()
+
 	client := &entity.Client{
 		Name: username,
 		Conn: conn,
@@ -83,8 +90,11 @@ func (server *RoomServer) ConnectToRoom(w http.ResponseWriter, r *http.Request) 
 
 	client.Room.RegisterChan <- client
 
-	go client.SendMessage()
+	go client.SendMessage(clientCtx)
 	// dont go routine here as we need this become blocked and own this resource
 	// so when this exit, defer triggered, and connection closed.
 	client.ReceiveMessageFromSocket()
+
+	// after client is disconnected (client.ReceiveMessageFromSocket returned), unregister from room
+	client.Room.UnregisterChan <- client
 }

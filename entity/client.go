@@ -2,6 +2,7 @@ package entity
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"time"
 
@@ -26,12 +27,10 @@ const (
 )
 
 // ReceiveMessageFromSocket Establish Connection from websocket and send to Room's Boardcast channel if any
+// it can accept ctx context.Context too, given if this need to share a same context if this func need to call to other service or database call (and cancel it)
 func (client *Client) ReceiveMessageFromSocket() {
-	// to close connection after exit (either due to an error or a clean close
-	defer func() {
-		client.Room.UnregisterChan <- client
-		client.Conn.Close()
-	}()
+	// to close connection after exit (either due to an error or a clean close)
+	defer client.Conn.Close()
 
 	client.Conn.SetReadLimit(maxMessageSize)
 	// set a keep alive check with FE client
@@ -55,7 +54,7 @@ func (client *Client) ReceiveMessageFromSocket() {
 	}
 }
 
-func (client *Client) SendMessage() {
+func (client *Client) SendMessage(ctx context.Context) {
 	ticker := time.NewTicker(60 * time.Second)
 	defer func() {
 		ticker.Stop()
@@ -63,9 +62,17 @@ func (client *Client) SendMessage() {
 	}()
 	for {
 		select {
+
+		case <-ctx.Done():
+			// this trigger when client disconnected -> trigger client.Conn.ReadMessage() error in ReceiveMessageFromSocket and return back ConnectToRoom
+			// and triggered `defer cancel()` which will signal ctx.Done()
+			log.Printf("SendMessage for client %s: context canceled", client.Name)
+			client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+			return
 		case message, ok := <-client.Send:
 			client.Conn.SetWriteDeadline(time.Now().Add(pingWait))
 			if !ok {
+				// with ctx.Done(), this might not come in anymore
 				// hub closed channel
 				client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return

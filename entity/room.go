@@ -53,6 +53,7 @@ func (room *Room) Start() {
 			if _, ok := room.JoinedClients[client]; ok {
 				delete(room.JoinedClients, client)
 				// close channel, so client.SendMessage() can detect it and close websocket connection
+				// this is optional now after we used context (<- ctx.Done()) and close there
 				close(client.Send)
 			}
 		// boardcast message
