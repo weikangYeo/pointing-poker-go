@@ -8,6 +8,10 @@ This project is aim to try out websocket implementation in Golang by developing 
 - A Client can connect to a Room at a time.
 - A Room will be destroyed when no client is connected to it
 
+## Planned logic flow
+- Client send "{"point": "5"}"
+- Room received, and marked client as read (or should i just store the client -> pts map?)
+
 ## References
 
 ### Ping Pong Health Check Flow
@@ -35,9 +39,10 @@ This project is aim to try out websocket implementation in Golang by developing 
 
 ## TODO
 
-- [ ] Basic Setup of Hub Client Connection
-- [ ] Sample Web to test out idea
+- [x] Basic Setup of Hub Client Connection
+- [x] Sample Web to test out idea
 - [ ] Logic to Vote
+    - [ ] Verify isVoted logic
     - [ ] Do not accept input when isVisible = true
     - [ ] boardcast isvoted logic, room might need to keep isvoted stated, or shall room keep vote too?
     - [ ] when join room, get room latest state

@@ -3,6 +3,7 @@ package entity
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -10,13 +11,14 @@ import (
 )
 
 type Client struct {
+	// todo might need a proper client id, so in FE side when vote state is boardcasted, FE can map who is voted who is not.
 	Name string
 	Room *Room
 	// websocket connection
 	Conn *websocket.Conn
 	// outbound message
-	Send        chan []byte
-	CurrentVote int
+	Send        chan SocketMessage
+	CurrentVote string
 }
 
 const (
@@ -50,7 +52,17 @@ func (client *Client) ReceiveMessageFromSocket() {
 			break
 		}
 		message = bytes.TrimSpace(message)
-		client.Room.BroadcastChan <- message
+
+		var vote VoteReq
+		err = json.Unmarshal(message, &vote)
+		if err != nil {
+			log.Printf("Unexpected Message format error: %v", err)
+			// todo, think of better logic flow
+			continue
+		}
+		client.CurrentVote = vote.Point
+		client.Room.BroadcastVoteState()
+		//client.Room.BroadcastChan <- message
 	}
 }
 
@@ -82,13 +94,23 @@ func (client *Client) SendMessage(ctx context.Context) {
 			if err != nil {
 				return
 			}
-			writer.Write(message)
+			jsonMsg, err := json.Marshal(message)
+			if err != nil {
+				log.Println("could not marshal json:", err)
+				continue // Or handle error appropriately
+			}
+			writer.Write(jsonMsg)
 
-			// write our message that still in send channel
+			// write our message that still in send channel (if any)
 			remainingMessageCount := len(client.Send)
 			for i := 0; i < remainingMessageCount; i++ {
-				writer.Write([]byte{10})
-				writer.Write(<-client.Send)
+				nextMessage := <-client.Send
+				jsonMsg, err = json.Marshal(nextMessage)
+				if err != nil {
+					log.Println("could not marshal json:", err)
+					continue // Or handle error appropriately
+				}
+				writer.Write(jsonMsg)
 			}
 			e := writer.Close()
 			if e != nil {

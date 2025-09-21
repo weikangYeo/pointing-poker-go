@@ -13,11 +13,30 @@ type Room struct {
 	// todo might consider use k = name, v = client
 	JoinedClients map[*Client]bool
 	// inbound message from clients publish here
-	BroadcastChan chan []byte
+	// todo rename channel name, or remove this channel
+	BroadcastChan chan SocketMessage
+	VoteChan      chan VoteReq
+	// todo: Request current state channel, like who voted, is room showed
+	StateReqChan chan string
 	// register request publish here
 	RegisterChan chan *Client
 	// unregister request publish here
 	UnregisterChan chan *Client
+}
+
+func (room *Room) BroadcastVoteState() {
+
+	isVotedByClientNameMap := make(map[string]bool)
+	for client, _ := range room.JoinedClients {
+		isVoted := client.CurrentVote != ""
+		isVotedByClientNameMap[client.Name] = isVoted
+	}
+	message := SocketMessage{
+		Action:  "vote_updated",
+		Payload: RoomVoteState{isVotedByClientNameMap},
+	}
+
+	room.BroadcastChan <- message
 }
 
 func NewRoom() *Room {
@@ -34,7 +53,7 @@ func NewRoom() *Room {
 		RoundId:        1,
 		ShowAllCard:    false,
 		JoinedClients:  make(map[*Client]bool),
-		BroadcastChan:  make(chan []byte),
+		BroadcastChan:  make(chan SocketMessage),
 		RegisterChan:   make(chan *Client),
 		UnregisterChan: make(chan *Client),
 	}
