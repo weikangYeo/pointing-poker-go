@@ -3,6 +3,7 @@ package entity
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"log"
 )
 
@@ -31,11 +32,17 @@ func (room *Room) BroadcastVoteState() {
 		isVoted := client.CurrentVote != ""
 		isVotedByClientNameMap[client.Name] = isVoted
 	}
+
+	payload, err := json.Marshal(RoomVoteState{isVotedByClientNameMap})
+	if err != nil {
+		log.Printf("Unexpected Message format error: %v", err)
+	}
 	message := SocketMessage{
 		Action:  "vote_updated",
-		Payload: RoomVoteState{isVotedByClientNameMap},
+		Payload: payload,
 	}
 
+	log.Printf("boardcasting out vote_updated %v", message)
 	room.BroadcastChan <- message
 }
 
@@ -66,6 +73,8 @@ func (room *Room) Start() {
 		case client := <-room.RegisterChan:
 			room.JoinedClients[client] = true
 			log.Println("Client registered")
+			log.Println("Update status all connected clients")
+			go room.BroadcastVoteState()
 		// unregister client
 		case client := <-room.UnregisterChan:
 			// mean if room.JoinedClients[client] exists, and assign to "ok" variable
@@ -77,6 +86,7 @@ func (room *Room) Start() {
 			}
 		// boardcast message
 		case message := <-room.BroadcastChan:
+			log.Printf("room.BroadcastChan %v\n", room.JoinedClients)
 			for client := range room.JoinedClients {
 				select {
 				case client.Send <- message:

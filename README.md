@@ -42,7 +42,8 @@ This project is aim to try out websocket implementation in Golang by developing 
 - [x] Basic Setup of Hub Client Connection
 - [x] Sample Web to test out idea
 - [ ] Logic to Vote
-    - [ ] Verify isVoted logic
+    - [X] Verify isVoted & Ppl Joined logic
+    - [ ] FOR TESTING show vote point is sending out correctly to FE (or should do after isVisible?)
     - [ ] Do not accept input when isVisible = true
     - [ ] boardcast isvoted logic, room might need to keep isvoted stated, or shall room keep vote too?
     - [ ] when join room, get room latest state

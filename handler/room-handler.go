@@ -85,12 +85,14 @@ func (server *RoomServer) ConnectToRoom(w http.ResponseWriter, r *http.Request) 
 		Name: username,
 		Conn: conn,
 		Room: room,
-		Send: make(chan []byte, 256),
+		Send: make(chan entity.SocketMessage),
 	}
 
 	client.Room.RegisterChan <- client
 
 	go client.SendMessage(clientCtx)
+	//log.Println("Update status all connected clients")
+	//room.BroadcastVoteState()
 	// dont go routine here as we need this become blocked and own this resource
 	// so when this exit, defer triggered, and connection closed.
 	client.ReceiveMessageFromSocket()

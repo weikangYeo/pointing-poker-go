@@ -1,5 +1,7 @@
 package entity
 
+import "encoding/json"
+
 type VoteReq struct {
 	Point string
 }
@@ -11,6 +13,6 @@ type RoomVoteState struct {
 }
 
 type SocketMessage struct {
-	Action  string      `json:"action"`
-	Payload interface{} `json:"payload"`
+	Action  string          `json:"action"`
+	Payload json.RawMessage `json:"payload"`
 }

@@ -52,17 +52,23 @@ func (client *Client) ReceiveMessageFromSocket() {
 			break
 		}
 		message = bytes.TrimSpace(message)
+		log.Println("Received message:", string(message))
 
-		var vote VoteReq
-		err = json.Unmarshal(message, &vote)
-		if err != nil {
+		var socketMessage SocketMessage
+		if err := json.Unmarshal(message, &socketMessage); err != nil {
 			log.Printf("Unexpected Message format error: %v", err)
 			// todo, think of better logic flow
 			continue
 		}
-		client.CurrentVote = vote.Point
-		client.Room.BroadcastVoteState()
-		//client.Room.BroadcastChan <- message
+
+		if socketMessage.Action == "vote" {
+			var vote VoteReq
+			if err := json.Unmarshal(socketMessage.Payload, &vote); err != nil {
+				log.Printf("Unexpected Message format error: %v", err)
+			}
+			client.CurrentVote = vote.Point
+			client.Room.BroadcastVoteState()
+		}
 	}
 }
 
@@ -82,10 +88,12 @@ func (client *Client) SendMessage(ctx context.Context) {
 			client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		case message, ok := <-client.Send:
+			log.Println("Sending message out to client")
 			client.Conn.SetWriteDeadline(time.Now().Add(pingWait))
 			if !ok {
 				// with ctx.Done(), this might not come in anymore
 				// hub closed channel
+				log.Println("error !")
 				client.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}

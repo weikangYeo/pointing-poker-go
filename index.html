@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-g">
+    <title>WebSocket Chat Test</title>
+</head>
+<body>
+<h1>WebSocket Chat Test</h1>
+
+<div>
+    <h2>Create Room</h2>
+    <button id="createRoomBtn">Create Room</button>
+    <p>Room ID: <span id="roomId"></span></p>
+</div>
+
+<hr>
+
+<div>
+    <h2>Connect to Room</h2>
+    <input type="text" id="connectRoomId" placeholder="Enter Room ID">
+    <input type="text" id="username" placeholder="Enter Username">
+    <button id="connectBtn">Connect</button>
+</div>
+
+<hr>
+
+<div>
+    <h2>Room Status</h2>
+    <ul id="roomStatus"></ul>
+</div>
+
+<hr>
+
+<div>
+    <h2>Vote</h2>
+    <div id="voteOptions">
+        <button value="1">1</button>
+        <button value="2">2</button>
+        <button value="3">3</button>
+        <button value="5">5</button>
+        <button value="8">8</button>
+    </div>
+</div>
+
+<hr>
+
+<div>
+    <h2>Chat</h2>
+    <input type="text" id="message" placeholder="Enter message">
+    <button id="sendBtn">Send</button>
+    <h3>Messages:</h3>
+    <ul id="messages"></ul>
+</div>
+
+<script>
+    const createRoomBtn = document.getElementById('createRoomBtn');
+    const roomIdSpan = document.getElementById('roomId');
+    const connectRoomIdInput = document.getElementById('connectRoomId');
+    const usernameInput = document.getElementById('username');
+    const connectBtn = document.getElementById('connectBtn');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+    const messagesList = document.getElementById('messages');
+    const roomStatusList = document.getElementById('roomStatus');
+    const voteOptions = document.getElementById('voteOptions');
+
+    let socket;
+
+    createRoomBtn.addEventListener('click', () => {
+        fetch('/rooms', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            roomIdSpan.textContent = data.id;
+            connectRoomIdInput.value = data.id;
+        })
+        .catch(error => console.error('Error creating room:', error));
+    });
+
+    connectBtn.addEventListener('click', () => {
+        const roomId = connectRoomIdInput.value;
+        const username = usernameInput.value;
+        if (!roomId || !username) {
+            alert('Please enter Room ID and Username.');
+            return;
+        }
+
+        const wsUrl = `ws://${window.location.host}/rooms/${roomId}?username=${username}`;
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+            console.log('WebSocket connection established.');
+            const li = document.createElement('li');
+            li.textContent = 'Connected to room ' + roomId;
+            messagesList.appendChild(li);
+        };
+
+        socket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            if (message.action === 'vote_updated') {
+                roomStatusList.innerHTML = ''; // Clear previous status
+                const voteState = message.payload.IsVotedByClientNameMap;
+                for (const username in voteState) {
+                    const hasVoted = voteState[username];
+                    const li = document.createElement('li');
+                    li.textContent = `${username}: ${hasVoted ? 'Voted' : 'Not Voted'}`;
+                    roomStatusList.appendChild(li);
+                }
+            } else {
+                const li = document.createElement('li');
+                li.textContent = event.data;
+                messagesList.appendChild(li);
+            }
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket connection closed.');
+            const li = document.createElement('li');
+            li.textContent = 'Disconnected from room.';
+            messagesList.appendChild(li);
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+    });
+
+    sendBtn.addEventListener('click', () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            const message = messageInput.value;
+            socket.send(message);
+            messageInput.value = '';
+        } else {
+            alert('Not connected to a room.');
+        }
+    });
+
+    voteOptions.addEventListener('click', (event) => {
+        if (event.target.tagName === 'BUTTON') {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const voteValue = event.target.value;
+                const message = {
+                    action: 'vote',
+                    payload: {
+                        Point: voteValue
+                    }
+                };
+                socket.send(JSON.stringify(message));
+            } else {
+                alert('Not connected to a room.');
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
